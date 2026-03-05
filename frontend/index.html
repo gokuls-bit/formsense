@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="FormSense AI — Automated Form & Document Intelligence. Upload documents, extract text with OCR, classify document types, and extract entities using NLP.">
+    <title>FormSense AI — Document Intelligence</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
+</head>
+<body>
+    <div class="app-wrapper">
+
+        <!-- ═══════ HEADER ═══════ -->
+        <header class="app-header">
+            <div class="logo-badge">
+                <div class="logo-icon">🧠</div>
+                <span>FORMSENSE AI</span>
+            </div>
+            <h1 class="app-title">FormSense AI</h1>
+            <p class="app-subtitle">Automated Form &amp; Document Intelligence — powered by OCR, NLP &amp; AI Classification</p>
+
+            <!-- Health chips -->
+            <div class="health-bar" id="health-bar">
+                <div class="health-chip" id="chip-api"><span class="dot"></span> API</div>
+                <div class="health-chip" id="chip-ocr"><span class="dot"></span> OCR</div>
+                <div class="health-chip" id="chip-nlp"><span class="dot"></span> NLP</div>
+                <div class="health-chip" id="chip-classifier"><span class="dot"></span> Classifier</div>
+            </div>
+        </header>
+
+        <!-- ═══════ NAVIGATION ═══════ -->
+        <nav class="nav-tabs" role="tablist">
+            <button class="nav-tab active" data-tab="upload" role="tab" id="tab-upload">
+                <span class="tab-icon">📄</span> Upload
+            </button>
+            <button class="nav-tab" data-tab="history" role="tab" id="tab-history">
+                <span class="tab-icon">📁</span> History
+            </button>
+            <button class="nav-tab" data-tab="stats" role="tab" id="tab-stats">
+                <span class="tab-icon">📊</span> Stats
+            </button>
+        </nav>
+
+        <!-- ═══════ UPLOAD SECTION ═══════ -->
+        <section class="section active" id="section-upload" role="tabpanel">
+
+            <!-- Drop zone -->
+            <div class="upload-zone" id="upload-zone">
+                <div class="upload-content">
+                    <span class="upload-icon">📤</span>
+                    <p class="upload-title">Drop your document here</p>
+                    <p class="upload-desc">or click to browse files from your computer</p>
+                    <button class="upload-btn" id="browse-btn" type="button">
+                        Choose File
+                    </button>
+                    <p class="upload-formats">
+                        Supported: <span>PDF</span> <span>PNG</span> <span>JPG</span> <span>TIFF</span> <span>BMP</span> <span>WEBP</span> — Max 20 MB
+                    </p>
+                </div>
+                <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp,.webp">
+            </div>
+
+            <!-- Pipeline Tracker -->
+            <div class="pipeline-tracker" id="pipeline-tracker">
+                <div class="pipeline-title">⚙️ Processing Pipeline</div>
+                <div style="position: relative;">
+                    <div class="pipeline-connector">
+                        <div class="connector-bg"></div>
+                        <div class="connector-fill" id="connector-fill"></div>
+                    </div>
+                    <div class="pipeline-steps">
+                        <div class="pipeline-step" id="step-upload" data-step="0">
+                            <div class="step-dot">📁</div>
+                            <span class="step-label">Upload</span>
+                        </div>
+                        <div class="pipeline-step" id="step-ocr" data-step="1">
+                            <div class="step-dot">👁️</div>
+                            <span class="step-label">OCR</span>
+                        </div>
+                        <div class="pipeline-step" id="step-classify" data-step="2">
+                            <div class="step-dot">🏷️</div>
+                            <span class="step-label">Classify</span>
+                        </div>
+                        <div class="pipeline-step" id="step-nlp" data-step="3">
+                            <div class="step-dot">🧠</div>
+                            <span class="step-label">NLP</span>
+                        </div>
+                        <div class="pipeline-step" id="step-done" data-step="4">
+                            <div class="step-dot">✅</div>
+                            <span class="step-label">Done</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="results-panel" id="results-panel">
+                <!-- Populated by JS -->
+            </div>
+
+        </section>
+
+        <!-- ═══════ HISTORY SECTION ═══════ -->
+        <section class="section" id="section-history" role="tabpanel">
+            <div class="history-list" id="history-list">
+                <div class="history-empty">
+                    <span class="empty-icon">📂</span>
+                    <p>No documents processed yet.</p>
+                    <p style="margin-top:4px; font-size:13px;">Upload a document to get started!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════ STATS SECTION ═══════ -->
+        <section class="section" id="section-stats" role="tabpanel">
+            <div id="stats-content">
+                <div class="history-empty">
+                    <span class="empty-icon">📊</span>
+                    <p>No statistics available yet.</p>
+                    <p style="margin-top:4px; font-size:13px;">Process some documents to see analytics.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

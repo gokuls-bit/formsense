@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+python-multipart==0.0.9
+Pillow==10.4.0
+pytesseract==0.3.13
+pdf2image==1.17.0
+spacy==3.7.6
+scikit-learn==1.5.2
+numpy==2.0.2
+pandas==2.2.3
+python-dotenv==1.0.1
+pydantic==2.9.2
+transformers==4.44.2
+torch==2.4.1
+easyocr==1.7.2
+aiofiles==24.1.0
+PyPDF2==3.0.1
