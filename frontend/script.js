@@ -5,9 +5,7 @@
 
 const API_BASE = window.location.origin;
 
-// ==========================================
-// DOM ELEMENTS
-// ==========================================
+
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
