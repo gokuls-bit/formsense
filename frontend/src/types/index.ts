@@ -8,7 +8,7 @@ export interface DocumentResult {
     summary: string;
     extracted_text: string;
     processing_time: number;
-    entities: any;
+    entities: any;   
     key_fields: any;
     status: string;
 }
