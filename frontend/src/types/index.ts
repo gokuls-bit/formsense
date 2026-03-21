@@ -4,7 +4,7 @@ export interface DocumentResult {
     file_type: string;
     file_size: number;
     document_category: string;
-    category_confidence: number;
+    category_confidence: number; 
     summary: string;
     extracted_text: string;
     processing_time: number;
