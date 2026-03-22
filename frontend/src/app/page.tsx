@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import axios from "axios";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast, Toaster } from "react-hot-toast";
 
 // Types
 import { DocumentResult, Stats } from "@/types";
@@ -20,68 +22,72 @@ import { HistoryTab } from "@/components/HistoryTab";
 import { StatsTab } from "@/components/StatsTab";
 import { PricingModal } from "@/components/PricingModal";
 import { PaymentGateway } from "@/components/PaymentGateway";
+import { McpPanel } from "@/components/McpPanel";
+
+// State
+import { useAppStore } from "@/store";
 
 const API_BASE = "http://localhost:8000";
 
 export default function SaaSPage() {
+    const queryClient = useQueryClient();
+    
+    // Global State
+    const { 
+        activeDocument, setActiveDocument, 
+        pipelineStep, setPipelineStep, 
+        isProcessing, setIsProcessing,
+        setShowSkillPanel 
+    } = useAppStore();
+
+    // Local UI State
     const [activeTab, setActiveTab] = useState<"upload" | "history" | "stats" | "landing">("landing");
     const [isPremium, setIsPremium] = useState(false);
     const [premiumType, setPremiumType] = useState<"monthly" | "quarterly" | null>(null);
     const [showPricing, setShowPricing] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
     const [paymentStep, setPaymentStep] = useState(0);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [pipelineStep, setPipelineStep] = useState(0);
-    const [result, setResult] = useState<DocumentResult | null>(null);
-    const [history, setHistory] = useState<any[]>([]);
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [health, setHealth] = useState({ api: false, ocr: false, nlp: false, classifier: false });
 
-    // Load initial data
+    // React Query Hooks
+    const healthQuery = useQuery({
+        queryKey: ['health'],
+        queryFn: async () => {
+            const { data } = await axios.get(`${API_BASE}/api/health`);
+            return data.services;
+        },
+        refetchInterval: 30000 
+    });
+
+    const documentsQuery = useQuery({
+        queryKey: ['documents'],
+        queryFn: async () => {
+             const { data } = await axios.get(`${API_BASE}/api/documents`);
+             return data.documents as DocumentResult[];
+        },
+        enabled: activeTab === "history" || activeTab === "upload" 
+    });
+
+    const statsQuery = useQuery({
+        queryKey: ['stats'],
+        queryFn: async () => {
+             const { data } = await axios.get(`${API_BASE}/api/stats`);
+             return data as Stats;
+        },
+        enabled: activeTab === "stats"
+    });
+
     useEffect(() => {
-        checkHealth();
-        // Restore premium status
         const savedPremium = localStorage.getItem("fs_premium") === "true";
         if (savedPremium) {
             setIsPremium(true);
             setPremiumType(localStorage.getItem("fs_premium_type") as any);
         }
+    }, []);
 
-        if (activeTab === "history") fetchHistory();
-        if (activeTab === "stats") fetchStats();
-    }, [activeTab]);
-
-    const checkHealth = async () => {
-        try {
-            const { data } = await axios.get(`${API_BASE}/api/health`);
-            setHealth({
-                api: data.services.api === "operational",
-                ocr: data.services.ocr_easyocr === "available" || data.services.ocr_tesseract === "available",
-                nlp: data.services.nlp_spacy === "available",
-                classifier: data.services.classifier === "operational"
-            });
-        } catch (e) {
-            setHealth({ api: false, ocr: false, nlp: false, classifier: false });
-        }
-    };
-
-    const fetchHistory = async () => {
-        try {
-            const { data } = await axios.get(`${API_BASE}/api/documents`);
-            setHistory(data.documents);
-        } catch (e) { console.error(e); }
-    };
-
-    const fetchStats = async () => {
-        try {
-            const { data } = await axios.get(`${API_BASE}/api/stats`);
-            setStats(data);
-        } catch (e) { console.error(e); }
-    };
-
+    // Upload Flow
     const handleUpload = async (file: File) => {
         setIsProcessing(true);
-        setResult(null);
+        setActiveDocument(null);
         setPipelineStep(0);
 
         const formData = new FormData();
@@ -90,17 +96,37 @@ export default function SaaSPage() {
 
         try {
             const interval = setInterval(() => {
-                setPipelineStep(prev => (prev < 3 ? prev + 1 : prev));
-            }, 1000);
+                setPipelineStep((prev: number) => (prev < 3 ? prev + 1 : prev));
+            }, 800);
 
-            const { data } = await axios.post(`${API_BASE}/api/upload`, formData);
+            const { data } = await axios.post(`${API_BASE}/api/upload`, formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
 
             clearInterval(interval);
             setPipelineStep(4);
-            setResult(data);
+            setActiveDocument(data);
+            toast.success("Document analyzed successfully!");
+            queryClient.invalidateQueries({ queryKey: ['documents'] }); // auto-refetch
+            queryClient.invalidateQueries({ queryKey: ['stats'] });
+
             setTimeout(() => setIsProcessing(false), 800);
-        } catch (e) {
-            alert("Processing failed. Please check backend.");
+            
+            // Trigger MCP Discovery notification
+            setTimeout(() => toast.custom((t: any) => (
+                <div className="bg-slate-900 border border-indigo-500/50 rounded-xl p-4 flex flex-col gap-2 shadow-xl shadow-indigo-500/20">
+                    <p className="text-sm font-medium text-white">Advanced Parsing Available</p>
+                    <button 
+                        onClick={() => { toast.dismiss(t.id); setShowSkillPanel(true); }}
+                        className="text-xs bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg transition-colors"
+                    >
+                        Activate MCP Skills Layer
+                    </button>
+                </div>
+            ), { duration: 6000 }), 1500);
+
+        } catch (e: any) {
+            toast.error(e.response?.data?.message || "Processing failed. API error.");
             setIsProcessing(false);
         }
     };
@@ -125,13 +151,26 @@ export default function SaaSPage() {
                     setPremiumType(type);
                     setShowPayment(false);
                     setActiveTab("upload");
+                    toast.success("Welcome to Enterprise capabilities!");
                 }, 1000);
             }
         }, 1200);
     };
 
+    const parsedHealth = {
+        api: healthQuery.data?.api === "operational",
+        ocr: healthQuery.data?.ocr_easyocr === "available" || healthQuery.data?.ocr_tesseract === "mock_only" || healthQuery.data?.ocr_tesseract === "available",
+        nlp: healthQuery.data?.nlp_spacy === "available" || healthQuery.data?.nlp_spacy === "mock_only",
+        classifier: healthQuery.data?.classifier === "operational"
+    };
+
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-indigo-500/30 font-sans">
+        <div className="min-h-screen bg-slate-950 text-slate-50 selection:bg-indigo-500/30 font-sans relative">
+            <Toaster position="top-right" toastOptions={{ style: { background: '#0f172a', color: '#fff', border: '1px solid rgba(99,102,241,0.2)' } }} />
+            
+            {/* Global MCP Layer */}
+            {<McpPanel />}
+
             <Navbar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -141,7 +180,7 @@ export default function SaaSPage() {
             />
 
             <main className="max-w-7xl mx-auto px-6 py-12">
-                <HealthChips health={health} />
+                <HealthChips health={parsedHealth} />
 
                 {activeTab === "landing" ? (
                     <div className="space-y-24">
@@ -171,23 +210,43 @@ export default function SaaSPage() {
                 ) : (
                     <AnimatePresence mode="wait">
                         {activeTab === "upload" && (
-                            <div className="space-y-12">
+                            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="space-y-12">
                                 <DashboardUpload
                                     isPremium={isPremium}
                                     isProcessing={isProcessing}
                                     pipelineStep={pipelineStep}
                                     onUpload={handleUpload}
                                 />
-                                {result && <ResultPanel result={result} />}
-                            </div>
+                                {activeDocument && (
+                                    <div className="relative">
+                                        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-2xl blur opacity-25"></div>
+                                        <ResultPanel result={activeDocument} />
+                                        <div className="mt-4 flex justify-end">
+                                            <button 
+                                                onClick={() => setShowSkillPanel(true)} 
+                                                className="bg-indigo-950 border border-indigo-500/50 hover:bg-indigo-900 text-indigo-300 px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.4)]"
+                                            >
+                                                Apply MCP Data Skills ✨
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
                         )}
 
-                        {activeTab === "history" && (
-                            <HistoryTab history={history} onRefresh={fetchHistory} />
+                        {activeTab === "history" && documentsQuery.data && (
+                            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+                                <HistoryTab 
+                                    history={documentsQuery.data} 
+                                    onRefresh={() => queryClient.invalidateQueries({ queryKey: ['documents'] })} 
+                                />
+                            </motion.div>
                         )}
 
-                        {activeTab === "stats" && stats && (
-                            <StatsTab stats={stats} />
+                        {activeTab === "stats" && statsQuery.data && (
+                             <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
+                                <StatsTab stats={statsQuery.data} />
+                             </motion.div>
                         )}
                     </AnimatePresence>
                 )}
@@ -204,7 +263,7 @@ export default function SaaSPage() {
                 step={paymentStep}
             />
 
-            <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-900 text-center">
+            <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-900 text-center relative z-10">
                 <p className="text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em]">
                     © 2026 FormSense AI • Semester Project Submission • Gokul Kumar Sant
                 </p>
